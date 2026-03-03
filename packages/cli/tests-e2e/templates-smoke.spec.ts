@@ -1,8 +1,13 @@
 import { expect, test } from '@playwright/test'
 
-import { attachRuntimeGuards, createReactAppFixture, getRepoPath } from './helpers'
+import {
+  attachRuntimeGuards,
+  createReactAppFixture,
+  getRepoPath,
+  optimizePageForFastE2E,
+} from './helpers'
 
-test('@blocking creates and renders the resume template', async ({ page }) => {
+test('@matrix creates and renders the resume template', async ({ page }) => {
   const fixture = await createReactAppFixture({
     appName: 'resume-template-smoke-app',
     template: getRepoPath('examples/react/resume/template.json'),
@@ -10,6 +15,7 @@ test('@blocking creates and renders the resume template', async ({ page }) => {
   const guards = attachRuntimeGuards(page, fixture.url)
 
   try {
+    await optimizePageForFastE2E(page)
     await page.goto(fixture.url)
     await expect(page.getByRole('heading', { name: /Hi, I'm Jane Smith\./ })).toBeVisible()
     await expect(page.getByText('Product-minded frontend engineer')).toBeVisible()
@@ -27,7 +33,7 @@ test('@blocking creates and renders the resume template', async ({ page }) => {
   }
 })
 
-test('@blocking creates and renders the ecommerce template', async ({ page }) => {
+test('@matrix creates and renders the ecommerce template', async ({ page }) => {
   const fixture = await createReactAppFixture({
     appName: 'ecommerce-template-smoke-app',
     template: getRepoPath('examples/react/ecommerce/template.json'),
@@ -35,6 +41,7 @@ test('@blocking creates and renders the ecommerce template', async ({ page }) =>
   const guards = attachRuntimeGuards(page, fixture.url)
 
   try {
+    await optimizePageForFastE2E(page)
     await page.goto(fixture.url)
     await expect(page.getByRole('heading', { name: 'The TanStack Storefront.' })).toBeVisible()
 

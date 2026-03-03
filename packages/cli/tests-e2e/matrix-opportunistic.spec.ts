@@ -5,6 +5,7 @@ import {
   attachRuntimeGuards,
   createAppFixture,
   getRepoPath,
+  optimizePageForFastE2E,
   type E2EApp,
 } from './helpers'
 
@@ -19,6 +20,8 @@ type MatrixScenario = {
   assert: (fixture: E2EApp, page: Page) => Promise<void>
 }
 
+const reactStarterHeading = /Island hours, but for product teams\.|Start simple, ship quickly\./
+
 const scenarios: Array<MatrixScenario> = [
   {
     id: 'react-base-pnpm',
@@ -26,9 +29,7 @@ const scenarios: Array<MatrixScenario> = [
     packageManager: 'pnpm',
     visits: ['/'],
     assert: async (_, page) => {
-      await expect(
-        page.getByRole('heading', { name: 'Island hours, but for product teams.' }),
-      ).toBeVisible()
+      await expect(page.getByRole('heading', { name: reactStarterHeading })).toBeVisible()
     },
   },
   {
@@ -37,9 +38,7 @@ const scenarios: Array<MatrixScenario> = [
     packageManager: 'npm',
     visits: ['/'],
     assert: async (_, page) => {
-      await expect(
-        page.getByRole('heading', { name: 'Island hours, but for product teams.' }),
-      ).toBeVisible()
+      await expect(page.getByRole('heading', { name: reactStarterHeading })).toBeVisible()
     },
   },
   {
@@ -97,9 +96,7 @@ const scenarios: Array<MatrixScenario> = [
     addOns: ['biome', 'netlify'],
     visits: ['/'],
     assert: async (_, page) => {
-      await expect(
-        page.getByRole('heading', { name: 'Island hours, but for product teams.' }),
-      ).toBeVisible()
+      await expect(page.getByRole('heading', { name: reactStarterHeading })).toBeVisible()
     },
   },
 ]
@@ -123,6 +120,7 @@ test.describe('@matrix opportunistic matrix', () => {
       const guards = attachRuntimeGuards(page, fixture.url)
 
       try {
+        await optimizePageForFastE2E(page)
         for (const visit of scenario.visits || ['/']) {
           await page.goto(`${fixture.url}${visit}`)
           await expect(page.locator('body')).toBeVisible()

@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
 
-import { attachRuntimeGuards, createReactAppFixture } from './helpers'
+import { attachRuntimeGuards, createReactAppFixture, optimizePageForFastE2E } from './helpers'
 
-test('@blocking creates a React router-only app and navigates every internal link', async ({
+test('@matrix creates a React router-only app and navigates every internal link', async ({
   page,
 }) => {
   const fixture = await createReactAppFixture({
@@ -12,6 +12,7 @@ test('@blocking creates a React router-only app and navigates every internal lin
   const guards = attachRuntimeGuards(page, fixture.url)
 
   try {
+    await optimizePageForFastE2E(page)
     await page.goto(fixture.url)
     await expect(
       page.getByRole('heading', { name: 'Start simple, ship quickly.' }),

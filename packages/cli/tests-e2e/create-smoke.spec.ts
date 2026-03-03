@@ -1,14 +1,16 @@
 import { expect, test } from '@playwright/test'
 
-import { attachRuntimeGuards, createReactAppFixture } from './helpers'
+import { attachRuntimeGuards, createReactAppFixture, optimizePageForFastE2E } from './helpers'
 
 test('@blocking creates a React app and navigates core starter routes', async ({ page }) => {
   const fixture = await createReactAppFixture({
     appName: 'react-smoke-app',
+    runQualityGatesChecks: true,
   })
   const guards = attachRuntimeGuards(page, fixture.url)
 
   try {
+    await optimizePageForFastE2E(page)
     await page.goto(fixture.url)
     await expect(
       page.getByRole('heading', {

@@ -39,14 +39,12 @@ jobs:
           fetch-depth: 0
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
-      - name: Build
-        run: pnpm build
       - name: Install Playwright Chrome
         run: pnpm --filter @tanstack/cli exec playwright install --with-deps chrome
       - name: Run Matrix Scenario
         env:
           E2E_MATRIX_SCENARIO: ${{ matrix.scenario }}
-        run: pnpm --filter @tanstack/cli test:e2e:matrix
+        run: pnpm nx run @tanstack/cli:test:e2e:matrix
       - name: Upload Playwright Report
         if: always()
         uses: actions/upload-artifact@v4

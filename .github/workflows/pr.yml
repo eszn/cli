@@ -50,9 +50,11 @@ jobs:
           fetch-depth: 0
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
-      - name: Build
-        run: pnpm build
+      - name: Get base and head commits for `nx affected`
+        uses: nrwl/nx-set-shas@v4.4.0
+        with:
+          main-branch-name: main
       - name: Install Playwright Chrome
         run: pnpm --filter @tanstack/cli exec playwright install --with-deps chrome
       - name: Test E2E Blocking
-        run: pnpm test:e2e
+        run: pnpm nx affected --target=test:e2e --parallel=3

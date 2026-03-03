@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { attachRuntimeGuards, createReactAppFixture } from './helpers'
+import { attachRuntimeGuards, createReactAppFixture, optimizePageForFastE2E } from './helpers'
 
 test('@blocking creates app with multiple add-ons and renders demo routes', async ({ page }) => {
   const fixture = await createReactAppFixture({
@@ -10,6 +10,7 @@ test('@blocking creates app with multiple add-ons and renders demo routes', asyn
   const guards = attachRuntimeGuards(page, fixture.url)
 
   try {
+    await optimizePageForFastE2E(page)
     await page.goto(`${fixture.url}/demo/form/simple`)
     await expect(page.getByText('Title', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Submit' })).toBeVisible()

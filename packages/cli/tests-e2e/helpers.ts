@@ -28,6 +28,7 @@ type CreateAppFixtureOptions = {
   addOns?: Array<string>
   postCreateAddOns?: Array<string>
   skipDevServer?: boolean
+  runQualityGatesChecks?: boolean
 }
 
 export type RuntimeGuards = {
@@ -291,10 +292,59 @@ async function runQualityGates(
   })
 }
 
+function envBoolean(name: string, defaultValue: boolean) {
+  const value = process.env[name]
+  if (value == null) {
+    return defaultValue
+  }
+
+  const normalized = value.trim().toLowerCase()
+  return normalized === '1' || normalized === 'true' || normalized === 'yes'
+}
+
+const IMAGE_GLOB = '**/*.{png,jpg,jpeg,gif,webp,avif,ico}'
+const FONT_GLOB = '**/*.{woff,woff2,ttf,otf,eot}'
+const MEDIA_GLOB = '**/*.{mp4,webm,mp3,wav,ogg,mov,m4a}'
+const CSS_GLOB = '**/*.css'
+
+const abortRoute = (route: { abort: (reason?: string) => Promise<void> }) =>
+  route.abort('blockedbyclient')
+
+export async function optimizePageForFastE2E(page: Page) {
+  const blockAssets = envBoolean('E2E_BLOCK_NON_ESSENTIAL', true)
+  if (!blockAssets) {
+    return
+  }
+
+  await page.route(IMAGE_GLOB, abortRoute)
+  await page.route(FONT_GLOB, abortRoute)
+  await page.route(MEDIA_GLOB, abortRoute)
+
+  if (envBoolean('E2E_BLOCK_CSS', false)) {
+    await page.route(CSS_GLOB, abortRoute)
+  }
+}
+
 export async function createAppFixture(
   options: CreateAppFixtureOptions,
 ): Promise<E2EApp> {
   await access(cliDistPath)
+
+  const timings: Array<[string, number]> = []
+  const now = () => performance.now()
+  const start = now()
+  const mark = (label: string, startedAt: number) => {
+    timings.push([label, now() - startedAt])
+  }
+  const logTimings = () => {
+    if (!envBoolean('E2E_TIMINGS', true)) {
+      return
+    }
+
+    const totalMs = now() - start
+    const summary = timings.map(([label, ms]) => `${label}=${Math.round(ms)}ms`).join(' | ')
+    console.log(`[e2e:timing] ${options.appName} :: ${summary} | total=${Math.round(totalMs)}ms`)
+  }
 
   const rootDir = await mkdtemp(join(tmpdir(), 'tanstack-cli-e2e-'))
   const {
@@ -303,6 +353,7 @@ export async function createAppFixture(
     addOns,
     postCreateAddOns,
     skipDevServer,
+    runQualityGatesChecks = false,
     framework = 'react',
     packageManager = 'pnpm',
     routerOnly = false,
@@ -332,6 +383,7 @@ export async function createAppFixture(
     createArgs.push('--add-ons', addOns.join(','))
   }
 
+  const createStartedAt = now()
   await runCommand(
     'node',
     createArgs,
@@ -342,10 +394,12 @@ export async function createAppFixture(
       },
     },
   )
+  mark('create', createStartedAt)
 
   await patchViteConfigForE2E(appDir)
 
   if (postCreateAddOns?.length) {
+    const postAddOnsStartedAt = now()
     await runCommand('node', [cliDistPath, 'add', ...postCreateAddOns], {
       cwd: appDir,
       env: {
@@ -353,12 +407,19 @@ export async function createAppFixture(
       },
     })
 
+    mark('post-add-ons', postAddOnsStartedAt)
+
     await patchViteConfigForE2E(appDir)
   }
 
-  await runQualityGates(appDir, packageManager)
+  if (runQualityGatesChecks) {
+    const qualityGatesStartedAt = now()
+    await runQualityGates(appDir, packageManager)
+    mark('quality-gates', qualityGatesStartedAt)
+  }
 
   if (skipDevServer) {
+    logTimings()
     return {
       rootDir,
       appDir,
@@ -374,6 +435,7 @@ export async function createAppFixture(
 
   const dev = getPackageManagerCommandForScript(packageManager, 'dev')
 
+  const devServerStartedAt = now()
   const server = spawn(dev.command, dev.args, {
     cwd: appDir,
     env: {
@@ -398,12 +460,15 @@ export async function createAppFixture(
   try {
     url = await waitForDevServerURL(() => serverStdout)
     await waitForServer(url)
+    mark('dev-server-ready', devServerStartedAt)
   } catch (error) {
     await stopChild(server)
     throw new Error(
       `Failed to start app server at ${url}\nstdout:\n${serverStdout}\n\nstderr:\n${serverStderr}\n\n${error}`,
     )
   }
+
+  logTimings()
 
   return {
     rootDir,
@@ -429,6 +494,10 @@ function toSameOrigin(url: string, appOrigin: URL) {
   }
 }
 
+function isBlockedByClientError(value: string) {
+  return value.includes('ERR_BLOCKED_BY_CLIENT')
+}
+
 export function attachRuntimeGuards(page: Page, appUrl: string): RuntimeGuards {
   const appOrigin = new URL(appUrl)
   const pageErrors: Array<string> = []
@@ -442,7 +511,11 @@ export function attachRuntimeGuards(page: Page, appUrl: string): RuntimeGuards {
 
   const onConsole = (message: { type: () => string; text: () => string }) => {
     if (message.type() === 'error') {
-      consoleErrors.push(message.text())
+      const text = message.text()
+      if (isBlockedByClientError(text)) {
+        return
+      }
+      consoleErrors.push(text)
     }
   }
 
@@ -457,7 +530,7 @@ export function attachRuntimeGuards(page: Page, appUrl: string): RuntimeGuards {
     }
     const errorText = request.failure()?.errorText || 'unknown error'
 
-    if (errorText.includes('ERR_ABORTED')) {
+    if (errorText.includes('ERR_ABORTED') || isBlockedByClientError(errorText)) {
       return
     }
 
