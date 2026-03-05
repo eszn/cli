@@ -1,5 +1,11 @@
 # @tanstack/create
 
+## 0.63.0
+
+### Minor Changes
+
+- Update all template dependencies to latest versions. All `@tanstack/*` packages now use `"latest"` in templates and are resolved to pinned exact versions at project generation time via the npm registry. Third-party packages (vite, biome, sentry, clerk, convex, trpc, orpc, drizzle, prisma, zod, etc.) are updated to their current latest semver ranges and standardized across all add-ons. ([`5f47a05`](https://github.com/TanStack/cli/commit/5f47a05d5b00376710945609770a10bf17722661))
+
 ## 0.62.3
 
 ### Patch Changes
