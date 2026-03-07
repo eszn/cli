@@ -8,12 +8,10 @@
   "files": [
     "dist",
     "skills",
-    "bin",
     "!skills/_artifacts"
   ],
   "bin": {
-    "tanstack": "./dist/bin.js",
-    "intent": "./bin/intent.js"
+    "tanstack": "./dist/bin.js"
   },
   "scripts": {
     "build": "tsc",

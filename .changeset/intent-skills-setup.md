@@ -2,4 +2,4 @@
 "@tanstack/cli": patch
 ---
 
-Wire up TanStack Intent: add bin shim, CI workflows for skill validation and staleness checks, and update skill files to v0.62.1
+Wire up TanStack Intent: CI workflows for skill validation and staleness checks, and update skill files to v0.62.1
